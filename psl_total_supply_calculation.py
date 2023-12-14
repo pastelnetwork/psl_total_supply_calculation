@@ -55,40 +55,6 @@ loop = asyncio.get_event_loop()
 warnings.filterwarnings('ignore')
 USER_AGENT = "AuthServiceProxy/0.1"
 HTTP_TIMEOUT = 180
-
-class ClientSessionManager:
-    def __init__(self, stale_timeout: timedelta = timedelta(minutes=15)):
-        self.client_session: Optional[aiohttp.ClientSession] = None
-        self.last_used: datetime = datetime.min
-        self.stale_timeout = stale_timeout
-
-    async def is_valid_session(self, session: aiohttp.ClientSession) -> bool:
-        try:
-            async with session.get('http://microsoft.com', timeout=5) as response:
-                return response.status == 200
-        except Exception:
-            return False
-
-    async def get_or_create_session(self) -> aiohttp.ClientSession:
-        now = datetime.utcnow()
-        if self.client_session and (now - self.last_used < self.stale_timeout) and await self.is_valid_session(self.client_session):
-            self.last_used = now
-            return self.client_session
-        await self.close_session()  # Close the existing invalid or stale session, if any
-        self.last_used = now
-        return await self.create_session()
-
-    async def create_session(self) -> aiohttp.ClientSession:
-        connector = aiohttp.TCPConnector(limit=1000)
-        self.client_session = aiohttp.ClientSession(connector=connector)
-        return self.client_session
-
-    async def close_session(self):
-        if self.client_session:
-            await self.client_session.close()
-            self.client_session = None
-
-session_manager = ClientSessionManager() # Initialize global session manager
         
 def get_local_rpc_settings_func(directory_with_pastel_conf=os.path.expanduser("~/.pastel/")):
     with open(os.path.join(directory_with_pastel_conf, "pastel.conf"), 'r') as f:
